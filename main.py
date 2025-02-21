@@ -6,13 +6,24 @@ from datetime import date
 app = FastAPI(
     title="User Management API",
     description="""
-API для управления пользователями. Позволяет выполнять следующие операции:
-- Просматривать список пользователей.
-- Получать данные конкретного пользователя по ID.
-- Создавать нового пользователя.
-- Обновлять данные существующего пользователя.
-- Удалять пользователя.
-""",
+    # User Management API
+
+    ## Описание
+    API для управления пользователями. Позволяет выполнять следующие операции:
+    - Просматривать список пользователей.
+    - Получать данные конкретного пользователя по ID.
+    - Создавать нового пользователя.
+    - Обновлять данные существующего пользователя.
+    - Удалять пользователя.
+
+    ## Аутентификация
+    Данный API не требует аутентификации.
+
+    ## Формат данных
+    - Все запросы и ответы используют JSON.
+    - Дата рождения передается в формате `YYYY-MM-DD`.
+    - Баланс кошелька (`wallet`) передается в формате `float`.
+    """,
     version="1.0.0",
 )
 
@@ -31,22 +42,19 @@ db_users = [
 ]
 
 
-@app.get(
-    "/users/",
-    response_model=List[User],
-    summary="Получить всех пользователей",
-    description="Возвращает список всех пользователей из базы данных.",
-    tags=["Users"],
-)
+@app.get("/users/", response_model=List[User], tags=["Users"], summary="Получить всех пользователей")
 async def read_users():
     """
+    ## Описание
+    Возвращает список всех пользователей.
+
     ## Пример запроса
     ```http
     GET /users/
     ```
 
     ## Ответ
-    - **200 OK**: Возвращает список пользователей.
+    **200 OK**
     ```json
     [
         {"id": 1, "username": "user1", "wallet": 100.0, "birthdate": "1990-01-01"},
@@ -57,22 +65,19 @@ async def read_users():
     return db_users
 
 
-@app.get(
-    "/users/{user_id}",
-    response_model=User,
-    summary="Получить пользователя по ID",
-    description="Возвращает данные пользователя по указанному ID. Если пользователь не найден, возвращает ошибку 404.",
-    tags=["Users"],
-)
+@app.get("/users/{user_id}", response_model=User, tags=["Users"], summary="Получить пользователя по ID")
 async def read_user(user_id: int):
     """
+    ## Описание
+    Возвращает данные пользователя по указанному ID.
+
     ## Пример запроса
     ```http
     GET /users/1
     ```
 
-    ## Ответы
-    - **200 OK**: Возвращает данные пользователя.
+    ## Ответ
+    **200 OK**
     ```json
     {
         "id": 1,
@@ -81,7 +86,13 @@ async def read_user(user_id: int):
         "birthdate": "1990-01-01"
     }
     ```
-    - **404 Not Found**: Пользователь не найден.
+
+    **404 Not Found**
+    ```json
+    {
+        "detail": "User not found"
+    }
+    ```
     """
     user = next((user for user in db_users if user.id == user_id), None)
     if user is None:
@@ -89,15 +100,12 @@ async def read_user(user_id: int):
     return user
 
 
-@app.post(
-    "/users/",
-    response_model=User,
-    summary="Создать нового пользователя",
-    description="Добавляет нового пользователя в базу данных. Если пользователь с таким ID уже существует, возвращает ошибку 400.",
-    tags=["Users"],
-)
+@app.post("/users/", response_model=User, tags=["Users"], summary="Создать нового пользователя")
 async def create_user(user: User):
     """
+    ## Описание
+    Добавляет нового пользователя в базу данных.
+
     ## Пример запроса
     ```http
     POST /users/
@@ -110,9 +118,23 @@ async def create_user(user: User):
     }
     ```
 
-    ## Ответы
-    - **201 Created**: Пользователь успешно добавлен.
-    - **400 Bad Request**: Пользователь с таким ID уже существует.
+    ## Ответ
+    **201 Created**
+    ```json
+    {
+        "id": 3,
+        "username": "new_user",
+        "wallet": 50.0,
+        "birthdate": "2000-01-01"
+    }
+    ```
+
+    **400 Bad Request**
+    ```json
+    {
+        "detail": "User with this ID already exists"
+    }
+    ```
     """
     if any(u.id == user.id for u in db_users):
         raise HTTPException(status_code=400, detail="User with this ID already exists")
@@ -120,56 +142,34 @@ async def create_user(user: User):
     return user
 
 
-@app.put(
-    "/users/{user_id}",
-    response_model=User,
-    summary="Обновить данные пользователя",
-    description="Обновляет данные пользователя с указанным ID. Если пользователь не найден, возвращает ошибку 404.",
-    tags=["Users"],
-)
-async def update_user(user_id: int, updated_user: User):
-    """
-    ## Пример запроса
-    ```http
-    PUT /users/1
-    Content-Type: application/json
-    {
-        "username": "updated_user",
-        "wallet": 150.0,
-        "birthdate": "1991-01-01"
-    }
-    ```
-
-    ## Ответы
-    - **200 OK**: Данные пользователя успешно обновлены.
-    - **404 Not Found**: Пользователь с таким ID не найден.
-    """
-    for db_user in db_users:
-        if db_user.id == user_id:
-            db_user.username = updated_user.username
-            db_user.wallet = updated_user.wallet
-            db_user.birthdate = updated_user.birthdate
-            return db_user
-    raise HTTPException(status_code=404, detail="User not found")
-
-
-@app.delete(
-    "/users/{user_id}",
-    response_model=User,
-    summary="Удалить пользователя",
-    description="Удаляет пользователя с указанным ID из базы данных. Если пользователь не найден, возвращает ошибку 404.",
-    tags=["Users"],
-)
+@app.delete("/users/{user_id}", response_model=User, tags=["Users"], summary="Удалить пользователя")
 async def delete_user(user_id: int):
     """
+    ## Описание
+    Удаляет пользователя по ID.
+
     ## Пример запроса
     ```http
     DELETE /users/1
     ```
 
-    ## Ответы
-    - **200 OK**: Пользователь успешно удалён.
-    - **404 Not Found**: Пользователь с таким ID не найден.
+    ## Ответ
+    **200 OK**
+    ```json
+    {
+        "id": 1,
+        "username": "user1",
+        "wallet": 100.0,
+        "birthdate": "1990-01-01"
+    }
+    ```
+
+    **404 Not Found**
+    ```json
+    {
+        "detail": "User not found"
+    }
+    ```
     """
     user_index = next((i for i, u in enumerate(db_users) if u.id == user_id), None)
     if user_index is None:
